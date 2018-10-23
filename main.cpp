@@ -4,6 +4,9 @@
 
 using namespace std;
 
+//DEFINICOES
+#define DEBUG 0
+
 // FUNCOES;
 void gerar_tabelas();
 vector<int> expanda_chave(vector<int> entrada);
@@ -26,17 +29,19 @@ int main(void){
     senha.push_back(num);
   }
   cout << "Gerando sub-chaves...\n";
+
   #if(DEBUG)
   cout << "A tabela LOG e a tabela ANTI-LOG é:\n";
-  for(int i = 0; i < 255; i++){ cout << hex << tabela_l[i] << "\n"; }
-  cout << "------------------------\n";
-  for(int i = 0; i < 255; i++){ cout << hex << tabela_al[i] << "\n"; }
+  for(int i = 0; i < 255; i++){ if(i > 0 && i % 16 == 0) cout << "\n"; else cout << " "; cout << hex << tabela_l[i]; }
+  cout << "\n------------------------\n";
+  for(int i = 0; i < 255; i++){ if(i > 0 && i % 16 == 0) cout << "\n"; else cout << " "; cout << hex << tabela_al[i]; }
   #endif
+
   senhaexp = expanda_chave(senha);
   cout << "As senhas sao:\n";
   for(int i = 0; i < 11; i++){
     for(int j = 0; j < 16; j++){
-      cout << senha[i+j] << " ";
+      cout << hex << senhaexp[i*16+j] << " ";
     }
     cout << "\n";
   }
@@ -66,13 +71,13 @@ vector<int> expanda_chave(vector<int> entrada){
   int iter = 1; // Valor de iteração do RCON.
 
   while(qtd < 176){
-    for(int i = 0; i < 4; i++) temp.push_back(entrada[qtd-4+iter]); // Copia os ultimo bloco de 4 chars para um vetor auxiliar
+    for(int i = 0; i < 4; i++) temp.push_back(entrada[qtd-4+i]); // Copia os ultimo bloco de 4 chars para um vetor auxiliar
     if(qtd % 16 == 0){ // A cada 4 blocos de 4 bytes
-      chave_main(temp, iter);
+      temp = chave_main(temp, iter);
       iter++;
     }
+    for(int i = 0; i < 4; i++){ entrada.push_back(entrada[qtd - 16] ^ temp[i]); qtd++; }
 
-    for(int i = 0; i < 4; i++) entrada.push_back(entrada[qtd++ -16] ^ temp[i]);
     temp.clear();
   }
   return entrada;
@@ -87,7 +92,9 @@ vector<int> chave_main(vector<int> entrada, int iter){
 
 vector<int> rotacione(vector<int> entrada){
   vector<int> aux;
-  for(int i = 0; i < 4; i++) aux[i] = entrada[(i+1)%4];
+  for(int i = 0; i < 4; i++){
+    aux.push_back(entrada[(i+1)%4]);
+  }
   return aux;
 }
 
@@ -95,11 +102,11 @@ int sbox(int entrada){
   int a, b;
   a = b = ginv_mult(entrada);
   for(int i = 0; i < 4; i++){
-    a = ((a << 1)%255) | ((a >> 7)%255);
+    a = ((a << 1)%256) | ((a >> 7)%256);
     b ^= a;
   }
   b ^= 99;
-  return b%255;
+  return b;
 }
 
 // Calcula o inverso multiplicativo no gampo galoisiano, através de uma tabela já
@@ -116,7 +123,7 @@ int rcon(int num){
     b = c & 0x80;
     c = c << 1;
     if(b == 0x80) c ^= 0x1b;
-    num --;
+    num--;
   }
   return (int)c;
 }
